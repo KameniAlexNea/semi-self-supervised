@@ -46,13 +46,12 @@ def parse_args_pretrain() -> argparse.Namespace:
     # add model specific args
     parser = METHODS[temp_args.method].add_model_specific_args(parser)
 
-    # add distiller args
-    if temp_args.distiller:
-        parser = SEMISUPERVISED[temp_args.distiller]().add_model_specific_args(parser)
+    # add semissl args
+    if temp_args.semissl:
+        parser = SEMISUPERVISED[temp_args.semissl]().add_model_specific_args(parser)
 
     # add checkpoint and auto umap args
     parser.add_argument("--pretrained_model", type=str, default=None)
-    parser.add_argument("--pretrained_model_dsdm", type=str, default=None)
     parser.add_argument("--save_checkpoint", action="store_true")
     parser.add_argument("--auto_umap", action="store_true")
     temp_args, _ = parser.parse_known_args()

@@ -194,22 +194,6 @@ class BaseTransform:
         return str(self.transform)
 
 
-class DSDMTransform(BaseTransform):
-    """Apply simple transform for DSDM model"""
-
-    def __init__(self) -> None:
-
-        super().__init__()
-
-        self.transform = transforms.Compose(
-            [
-                transforms.RandomHorizontalFlip(p=0.5),
-                transforms.ToTensor(),
-                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261)),
-            ]
-        )
-
-
 class CifarTransform(BaseTransform):
     def __init__(
         self,
