@@ -6,8 +6,8 @@ from semissl.args.dataset import augmentations_args
 from semissl.args.dataset import dataset_args
 from semissl.args.utils import additional_setup_linear
 from semissl.args.utils import additional_setup_pretrain
-from semissl.semi import SEMISUPERVISED
 from semissl.methods import METHODS
+from semissl.semi import SEMISUPERVISED
 from semissl.utils.checkpointer import Checkpointer
 
 try:

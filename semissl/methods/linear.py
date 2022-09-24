@@ -1,5 +1,3 @@
-import functools
-import operator
 from argparse import ArgumentParser
 from typing import Any
 from typing import Dict
@@ -8,7 +6,6 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 
-import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
@@ -38,10 +35,7 @@ class LinearModel(pl.LightningModule):
         exclude_bias_n_norm: bool,
         extra_optimizer_args: dict,
         scheduler: str,
-        split_strategy: str,
         lr_decay_steps: Optional[Sequence[int]] = None,
-        tasks: list = None,
-        domain: str = None,
         **kwargs,
     ):
         """Implements linear evaluation.
@@ -78,19 +72,7 @@ class LinearModel(pl.LightningModule):
         self.exclude_bias_n_norm = exclude_bias_n_norm
         self.extra_optimizer_args = extra_optimizer_args
         self.scheduler = scheduler
-        self.split_strategy = split_strategy
         self.lr_decay_steps = lr_decay_steps
-        self.tasks = tasks
-        self.domain = domain
-
-        self.domains = [
-            "real",
-            "quickdraw",
-            "painting",
-            "sketch",
-            "infograph",
-            "clipart",
-        ]
 
         # all the other parameters
         self.extra_args = kwargs
@@ -295,9 +277,6 @@ class LinearModel(pl.LightningModule):
             "targets": batch[-1],
         }
 
-        if self.split_strategy == "domain" and len(batch) == 3:
-            results["domains"] = batch[0]
-
         return results
 
     def validation_epoch_end(self, outs: List[Dict[str, Any]]):
@@ -314,28 +293,5 @@ class LinearModel(pl.LightningModule):
         val_acc5 = weighted_mean(outs, "val_acc5", "batch_size")
 
         log = {"val_loss": val_loss, "val_acc1": val_acc1, "val_acc5": val_acc5}
-
-        if not self.trainer.sanity_checking:
-            preds = torch.cat([o["logits"].max(-1)[1] for o in outs]).cpu().numpy()
-            targets = torch.cat([o["targets"] for o in outs]).cpu().numpy()
-            mask_correct = preds == targets
-
-            if self.split_strategy == "class":
-                assert self.tasks is not None
-                for task_idx, task in enumerate(self.tasks):
-                    mask_task = np.isin(targets, np.array(task))
-                    correct_task = np.logical_and(mask_task, mask_correct).sum()
-                    log[f"val_acc1_task{task_idx}"] = correct_task / mask_task.sum()
-
-            if self.split_strategy == "domain":
-                assert self.tasks is None
-                domains = [o["domains"] for o in outs]
-                domains = np.array(functools.reduce(operator.iconcat, domains, []))
-                for task_idx, domain in enumerate(self.domains):
-                    mask_domain = np.isin(domains, np.array([domain]))
-                    correct_domain = np.logical_and(mask_domain, mask_correct).sum()
-                    log[f"val_acc1_{domain}_{task_idx}"] = (
-                        correct_domain / mask_domain.sum()
-                    )
 
         self.log_dict(log, sync_dist=True)

@@ -36,8 +36,7 @@ def pairwise_cosine_loss(z1: torch.Tensor, z2: torch.Tensor):
         torch.Tensor: off-diagonal Cosine Similarity Loss.
     """
     D = z1.size(1)
-    eps = 1e-4
-    z = (z1.T @ z2).pow(2) / D # (z1.pow(2).sum(0) @ z2.pow(2).sum(0) + eps)
+    z = (z1.T @ z2).pow(2) / D  # (z1.pow(2).sum(0) @ z2.pow(2).sum(0) + eps)
     diag = torch.eye(D)
     return z[~diag.bool()].sum()
 

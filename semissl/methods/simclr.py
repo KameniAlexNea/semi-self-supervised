@@ -119,7 +119,7 @@ class SimCLR(BaseModel):
             torch.Tensor: total loss composed of SimCLR loss and classification loss.
         """
 
-        indexes, *_, target = batch[f"task{self.current_task_idx}"]
+        indexes, *_, target = batch[f"ssl"]
 
         out = super().training_step(batch, batch_idx)
 

@@ -191,7 +191,7 @@ class DeepClusterV2(BaseModel):
             torch.Tensor: total loss composed of DeepClusterV2 loss and classification loss.
         """
 
-        idxs = batch[f"task{self.current_task_idx}"][0].squeeze(-1)
+        idxs = batch["ssl"][0].squeeze(-1)
 
         out = super().training_step(batch, batch_idx)
         feats1, feats2 = out["feats"]

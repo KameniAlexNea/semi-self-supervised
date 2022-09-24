@@ -217,12 +217,7 @@ class PretrainABC(ABC):
                 num_threads=num_workers,
                 no_labels=self.extra_args["no_labels"],
                 encode_indexes_into_labels=self.encode_indexes_into_labels,
-                split_strategy=self.split_strategy,
-                tasks=self.tasks,
-                task_idx=self.current_task_idx,
-                num_tasks=self.num_tasks,
                 dataset=dataset,
-                domain=self.domains[self.current_task_idx],
                 train_test="train",
             )
             output_map = ["large1", "large2", "label"]
@@ -244,7 +239,7 @@ class PretrainABC(ABC):
 
         self.dali_epoch_size = train_pipeline.epoch_size("Reader")
 
-        loaders = {f"task{self.current_task_idx}": train_loader}
+        loaders = {f"ssl": train_loader}
         if self.online_eval:
             loaders.update(
                 online_eval=prepare_data(
@@ -295,7 +290,6 @@ class ClassificationABC(ABC):
             num_shards=num_shards,
             num_threads=num_workers,
             dataset=dataset,
-            domain=self.domain,
         )
         train_loader = Wrapper(
             train_pipeline,
