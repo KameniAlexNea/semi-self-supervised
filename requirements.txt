@@ -1,0 +1,11 @@
+torch
+torchvision
+pytorch-lightning
+lightning-bolts
+wandb
+sklearn
+einops
+seaborn
+matplotlib
+pandas
+umap-learn
