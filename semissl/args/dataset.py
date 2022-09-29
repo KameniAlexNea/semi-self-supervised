@@ -67,3 +67,6 @@ def augmentations_args(parser: ArgumentParser):
 
     # debug
     parser.add_argument("--debug_augmentations", action="store_true")
+
+    # semi supervised rate of dataset
+    parser.add_argument("--semi_rate", type=float, default=0.4)
