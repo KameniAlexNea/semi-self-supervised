@@ -9,6 +9,8 @@ from typing import Sequence
 import torch
 from functorch import vmap
 
+from semissl.semi.base import base_semi_wrapper
+
 def feature_corralation(z1: torch.Tensor, z2: torch.Tensor):
     if z1.dim() == 1:
         z1 = z1.view(1, -1)
@@ -22,8 +24,8 @@ def feature_corralation(z1: torch.Tensor, z2: torch.Tensor):
     diag = torch.eye(N)
     return ((1 - cov_z1)[~diag.bool()].pow(2).mean() + (1 - cov_z2)[~diag.bool()].pow(2).mean()) / 2
 
-def correlated_semi_wrapper(Method=object):
-    class CorrelatedSemiWrapper(Method):
+def correlative_semi_wrapper(Method=object):
+    class CorrelatedSemiWrapper(base_semi_wrapper(Method)):
         def __init__(self, semi_lamb: float, **kwargs) -> None:
             super().__init__(**kwargs)
 
@@ -32,7 +34,7 @@ def correlated_semi_wrapper(Method=object):
         def add_model_specific_args(
             parent_parser: argparse.ArgumentParser,
         ) -> argparse.ArgumentParser:
-            parser = parent_parser.add_argument_group("contrastive_distiller")
+            parser = parent_parser.add_argument_group("correlative_semi")
 
             parser.add_argument("--semi_lamb", type=float, default=1)
 
@@ -41,10 +43,10 @@ def correlated_semi_wrapper(Method=object):
         def training_step(self, batch: Sequence[Any], batch_idx: int) -> torch.Tensor:
             out = super().training_step(batch, batch_idx)
 
-            *_, labels = batch["semi"]
+            *_, labels = batch["ssl"]
             z1, z2 = out["feats"]
-            z1 = z1[-len(labels):]
-            z2 = z2[-len(labels):]
+            z1 = z1[labels != -1]
+            z2 = z2[labels != -1]
             labels = labels[labels != -1]
             unique_labels: torch.Tensor = torch.unique(labels)
 
