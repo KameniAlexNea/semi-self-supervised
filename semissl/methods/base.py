@@ -400,7 +400,7 @@ class BaseModel(pl.LightningModule):
         assert len(X_task) == self.num_crops + self.num_small_crops
 
         # forward views of the current task in the encoder
-        outs_task = [self.base_forward(x) for x in X_task[: self.num_crops]]
+        outs_task = [self(x) for x in X_task[: self.num_crops]]
         outs_task = {k: [out[k] for out in outs_task] for k in outs_task[0].keys()}
 
         if self.multicrop:

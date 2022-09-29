@@ -16,7 +16,7 @@ def cross_entropy_semi_wrapper(Method=object):
     class CrossEntropySemiWrapper(base_semi_wrapper(Method)):
         def __init__(self, n_class: int, semi_lamb: float, **kwargs) -> None:
             super().__init__(**kwargs)
-            self.output_dim = kwargs["output_dim"]
+            self.output_dim = self.encoder.inplanes
             self.n_class = n_class
             self.semi_lamb = semi_lamb
             self.linear = nn.Linear(self.output_dim, self.n_class)
@@ -25,9 +25,11 @@ def cross_entropy_semi_wrapper(Method=object):
         def add_model_specific_args(
             parent_parser: argparse.ArgumentParser,
         ) -> argparse.ArgumentParser:
-            parser = parent_parser.add_argument_group("contrastive_distiller")
+            parser = parent_parser.add_argument_group("cross_entropy_semissl")
 
             parser.add_argument("--semi_lamb", type=float, default=10)
+
+            return parent_parser
 
         @property
         def learnable_params(self) -> List[dict]:
@@ -38,7 +40,12 @@ def cross_entropy_semi_wrapper(Method=object):
             """
 
             extra_learnable_params = [
-                {"params": self.linear.parameters()},
+                {
+                    "name": "linear",
+                    "params": self.linear.parameters(),
+                    "lr": self.classifier_lr,
+                    "weight_decay": 0,
+                },
             ]
             return super().learnable_params + extra_learnable_params
         

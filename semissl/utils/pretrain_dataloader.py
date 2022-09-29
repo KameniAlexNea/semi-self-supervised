@@ -21,8 +21,19 @@ from torch.utils.data.dataset import Dataset
 from torch.utils.data.dataset import Subset
 from torchvision import transforms
 from torchvision.datasets import STL10
-from torchvision.datasets import ImageFolder
+from torchvision.datasets import ImageFolder, CIFAR10
 
+
+def mask_dataset(dataset: Dataset, dataset_name: str, semi_rate: float):
+    if dataset_name not in ["cifar10", "cifar100"]:
+        return dataset
+    if semi_rate > 1:
+        semi_rate = semi_rate / len(dataset)
+    indices = torch.randperm(len(dataset))[:int(len(dataset) * (1 - semi_rate))].tolist()
+    classes = torch.tensor(dataset.targets)
+    classes[indices] = -1
+    dataset.targets = classes
+    return dataset
 
 def split_dataset(
     dataset: Dataset,

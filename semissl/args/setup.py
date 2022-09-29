@@ -8,6 +8,7 @@ from semissl.args.utils import additional_setup_linear
 from semissl.args.utils import additional_setup_pretrain
 from semissl.methods import METHODS
 from semissl.semi import SEMISUPERVISED
+from semissl.args.semi import semi_ssl_args
 from semissl.utils.checkpointer import Checkpointer
 
 try:
@@ -33,6 +34,7 @@ def parse_args_pretrain() -> argparse.Namespace:
     # add shared arguments
     dataset_args(parser)
     augmentations_args(parser)
+    semi_ssl_args(parser)
 
     # add pytorch lightning trainer args
     parser = pl.Trainer.add_argparse_args(parser)
