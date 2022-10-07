@@ -43,7 +43,7 @@ def main():
     args = parse_args_pretrain()
 
     # online eval dataset reloads when task dataset is over
-    args.multiple_trainloader_mode = "min_size"
+    args.multiple_trainloader_mode = "max_size_cycle"
 
     # set online eval batch size and num workers
     args.online_eval_batch_size = (
@@ -94,7 +94,7 @@ def main():
                 transform, num_crops=args.num_crops
             )
 
-        train_dataset, online_eval_dataset = prepare_datasets(
+        task_dataset, online_eval_dataset = prepare_datasets(
             args.dataset,
             task_transform=task_transform,
             online_eval_transform=online_eval_transform,
@@ -103,8 +103,14 @@ def main():
             no_labels=args.no_labels,
         )
 
-        task_dataset = mask_dataset(
-            train_dataset, args.dataset, args.semi_rate
+        task_dataset, label_task_dataset = mask_dataset(
+            task_dataset, args.dataset, args.semi_rate
+        )
+
+        label_loader = prepare_dataloader(
+            label_task_dataset,
+            batch_size=max(args.batch_size // 4, int(args.batch_size * len(label_task_dataset) / len(task_dataset))),
+            num_workers=args.num_workers,
         )
 
         task_loader = prepare_dataloader(
@@ -113,7 +119,7 @@ def main():
             num_workers=args.num_workers,
         )
 
-        train_loaders = {"ssl": task_loader}
+        train_loaders = {"ssl": task_loader, "semi": label_loader}
 
         if args.online_eval_batch_size:
             online_eval_loader = prepare_dataloader(
@@ -150,22 +156,12 @@ def main():
             f"Dali{MethodClass.__name__}", (PretrainABC, MethodClass)
         )
 
-    if args.semissl :
-        MethodClass = SEMISUPERVISED[args.semissl ](MethodClass)
+    if args.semissl:
+        MethodClass = SEMISUPERVISED[args.semissl](MethodClass)
 
     model: torch.nn.Module = MethodClass(
         **args.__dict__, n_class = 10 if args.dataset.lower() == "cifar10" else 100
     )
-
-    # only one resume mode can be true
-    assert [args.resume_from_checkpoint, args.pretrained_model].count(True) <= 1
-
-    if args.resume_from_checkpoint:
-        pass  # handled by the trainer
-    elif args.pretrained_model:
-        print(f"Loading previous task checkpoint {args.pretrained_model}...")
-        state_dict = torch.load(args.pretrained_model, map_location="cpu")["state_dict"]
-        model.load_state_dict(state_dict, strict=False)
 
     callbacks = []
 
@@ -178,7 +174,7 @@ def main():
             entity=args.entity,
             offline=args.offline,
             reinit=True,
-            log_model=True,
+            # log_model=True,
         )
         if args.resume_from_checkpoint is None:
             wandb_logger.watch(model, log="gradients", log_freq=100)

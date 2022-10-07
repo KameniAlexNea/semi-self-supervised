@@ -57,11 +57,10 @@ def cross_entropy_semi_wrapper(Method=object):
         def training_step(self, batch: Sequence[Any], batch_idx: int) -> torch.Tensor:
             out = super().training_step(batch, batch_idx)
 
-            *_, labels = batch["ssl"]
-            p1, p2 = out["p"]
-            p1 = p1[labels != -1]
-            p2 = p2[labels != -1]
-            labels = labels[labels != -1]
+            *_, labels = batch["semi"]
+            p1, p2 = out["p"][-len(labels):]
+            p1 = p1[-len(labels):]
+            p2 = p2[-len(labels):]
             
             cross_entropy = F.cross_entropy(torch.cat([p1, p2]), torch.cat([labels, labels]))
 
