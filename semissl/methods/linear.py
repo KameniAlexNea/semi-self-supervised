@@ -220,7 +220,7 @@ class LinearModel(pl.LightningModule):
 
         Returns:
             Tuple[int, torch.Tensor, torch.Tensor, torch.Tensor]:
-                batch size, loss, accuracy @1 and accuracy @5.
+                batch size, loss, accuracy @1 and accuracy @k.
         """
 
         *_, X, target = batch
@@ -230,8 +230,8 @@ class LinearModel(pl.LightningModule):
 
         loss = F.cross_entropy(logits, target)
 
-        acc1, acc5 = accuracy_at_k(logits, target, top_k=(1, 5))
-        return batch_size, loss, acc1, acc5, logits
+        acc1, acc3 = accuracy_at_k(logits, target, top_k=(1, 3))
+        return batch_size, loss, acc1, acc3, logits
 
     def training_step(self, batch: torch.Tensor, batch_idx: int) -> torch.Tensor:
         """Performs the training step for the linear eval.
@@ -247,9 +247,9 @@ class LinearModel(pl.LightningModule):
         # set encoder to eval mode
         self.backbone.eval()
 
-        _, loss, acc1, acc5, _ = self.shared_step(batch, batch_idx)
+        _, loss, acc1, acc3, _ = self.shared_step(batch, batch_idx)
 
-        log = {"train_loss": loss, "train_acc1": acc1, "train_acc5": acc5}
+        log = {"train_loss": loss, "train_acc1": acc1, "train_acc3": acc3}
         self.log_dict(log, on_epoch=True, sync_dist=True)
         return loss
 
@@ -266,13 +266,13 @@ class LinearModel(pl.LightningModule):
                 the classification loss and accuracies.
         """
 
-        batch_size, loss, acc1, acc5, logits = self.shared_step(batch[-2:], batch_idx)
+        batch_size, loss, acc1, acc3, logits = self.shared_step(batch[-2:], batch_idx)
 
         results = {
             "batch_size": batch_size,
             "val_loss": loss,
             "val_acc1": acc1,
-            "val_acc5": acc5,
+            "val_acc3": acc3,
             "logits": logits,
             "targets": batch[-1],
         }
@@ -290,8 +290,8 @@ class LinearModel(pl.LightningModule):
 
         val_loss = weighted_mean(outs, "val_loss", "batch_size")
         val_acc1 = weighted_mean(outs, "val_acc1", "batch_size")
-        val_acc5 = weighted_mean(outs, "val_acc5", "batch_size")
+        val_acc3 = weighted_mean(outs, "val_acc3", "batch_size")
 
-        log = {"val_loss": val_loss, "val_acc1": val_acc1, "val_acc5": val_acc5}
+        log = {"val_loss": val_loss, "val_acc1": val_acc1, "val_acc3": val_acc3}
 
         self.log_dict(log, sync_dist=True)

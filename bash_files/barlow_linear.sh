@@ -1,0 +1,23 @@
+python3 main_linear.py \
+    --dataset cifar10 \
+    --encoder resnet18 \
+    --data_dir $DATA_DIR \
+    --train_dir cifar10/train \
+    --val_dir cifar10/val \
+    --max_epochs 100 \
+    --gpus 0 \
+    --precision 32 \
+    --optimizer adam \
+    --scheduler step \
+    --lr 0.00025 \
+    --lr_decay_steps 60 80 \
+    --weight_decay 0 \
+    --weight_decay 0 \
+    --batch_size 256 \
+    --num_workers 4 \
+    --name barlow-cifar10-semissl-linear \
+    --project semi-supervised-learning \
+    --entity alexneakameni \
+    --pretrained_feature_extractor $PRETRAINED_PATH \
+    --wandb \
+    --save_checkpoint

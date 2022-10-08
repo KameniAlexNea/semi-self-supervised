@@ -27,10 +27,10 @@ from sklearn.model_selection import train_test_split
 
 def mask_dataset(dataset: Dataset, ds_name: str, semi_rate: float):
     assert ds_name in ["cifar10", "cifar100"]
-    train_index, test_index = train_test_split(range(len(dataset)), test_size=semi_rate, stratify=dataset.targets)
-    train_ds = Subset(dataset, train_index)
-    test_ds = Subset(dataset, test_index)
-    return train_ds, test_ds
+    train_index, test_index = train_test_split(range(len(dataset)), test_size=semi_rate, stratify=dataset.targets, random_state=42)
+    unservised_ds = Subset(dataset, train_index)
+    supervised_ds = Subset(dataset, test_index)
+    return unservised_ds, supervised_ds
 
 def split_dataset(
     dataset: Dataset,
