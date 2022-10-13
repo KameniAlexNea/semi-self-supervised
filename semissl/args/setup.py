@@ -4,11 +4,11 @@ import pytorch_lightning as pl
 
 from semissl.args.dataset import augmentations_args
 from semissl.args.dataset import dataset_args
+from semissl.args.semi import semi_ssl_args
 from semissl.args.utils import additional_setup_linear
 from semissl.args.utils import additional_setup_pretrain
 from semissl.methods import METHODS
 from semissl.semi import SEMISUPERVISED
-from semissl.args.semi import semi_ssl_args
 from semissl.utils.checkpointer import Checkpointer
 
 try:

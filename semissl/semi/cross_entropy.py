@@ -3,23 +3,29 @@ MSE Loss between center and elements of same class
 """
 
 import argparse
-from typing import Any, List
+from typing import Any
+from typing import List
 from typing import Sequence
 
 import torch
 from torch import nn
-from torch.nn import functional as F
 
+from semissl.losses.correlation import cross_correlation_loss_func
 from semissl.semi.base import base_semi_wrapper
+
 
 def cross_entropy_semi_wrapper(Method=object):
     class CrossEntropySemiWrapper(base_semi_wrapper(Method)):
-        def __init__(self, n_class: int, semi_lamb: float, **kwargs) -> None:
+        def __init__(self, n_class: int, semi_lamb: float, semi_proj_hidden_dim: int, **kwargs) -> None:
             super().__init__(**kwargs)
             self.output_dim = self.encoder.inplanes
-            self.n_class = n_class
             self.semi_lamb = semi_lamb
-            self.linear = nn.Linear(self.output_dim, self.n_class)
+            self.classifier = nn.Sequential(
+                nn.Linear(self.output_dim, semi_proj_hidden_dim),
+                nn.BatchNorm1d(semi_proj_hidden_dim),
+                nn.ReLU(),
+                nn.Linear(semi_proj_hidden_dim, n_class),
+            )
 
         @staticmethod
         def add_model_specific_args(
@@ -27,7 +33,8 @@ def cross_entropy_semi_wrapper(Method=object):
         ) -> argparse.ArgumentParser:
             parser = parent_parser.add_argument_group("cross_entropy_semissl")
 
-            parser.add_argument("--semi_lamb", type=float, default=10)
+            parser.add_argument("--semi_proj_hidden_dim", type=int, default=2048)
+            parser.add_argument("--semi_lamb", type=float, default=15)
 
             return parent_parser
 
@@ -41,28 +48,28 @@ def cross_entropy_semi_wrapper(Method=object):
 
             extra_learnable_params = [
                 {
-                    "name": "linear",
-                    "params": self.linear.parameters(),
+                    "name": "classifier",
+                    "params": self.classifier.parameters(),
                     "lr": self.classifier_lr,
                     "weight_decay": 0,
                 },
             ]
             return super().learnable_params + extra_learnable_params
-        
+
         def forward(self, X, *args, **kwargs):
             out = super().forward(X, *args, **kwargs)
-            z = self.linear(out["feats"])
+            z = self.classifier(out["feats"])
             return {**out, "p": z}
 
         def training_step(self, batch: Sequence[Any], batch_idx: int) -> torch.Tensor:
             out = super().training_step(batch, batch_idx)
 
             *_, labels = batch["semi"]
-            p1, p2 = out["p"][-len(labels):]
-            p1 = p1[-len(labels):]
-            p2 = p2[-len(labels):]
-            
-            cross_entropy = F.cross_entropy(torch.cat([p1, p2]), torch.cat([labels, labels]))
+            p1, p2 = out["p"][-len(labels) :]
+            p1 = p1[-len(labels) :]
+            p2 = p2[-len(labels) :]
+
+            cross_entropy = cross_correlation_loss_func(p1, p2, labels, labels)
 
             self.log(
                 "train_cross_entropy_semi_loss",

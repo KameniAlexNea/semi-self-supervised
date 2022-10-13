@@ -2,7 +2,6 @@
 Base Implementation of Semi Supervised approach
 """
 
-import argparse
 from typing import Dict
 from typing import Sequence
 
@@ -11,7 +10,9 @@ import torch
 
 def base_semi_wrapper(Method=object):
     class BaseSemiWrapper(Method):
-        def training_step(self, batch: Dict[str, Sequence[torch.Tensor]], batch_idx: int) -> torch.Tensor:
+        def training_step(
+            self, batch: Dict[str, Sequence[torch.Tensor]], batch_idx: int
+        ) -> torch.Tensor:
             index1, (X1, X2), label1 = batch["ssl"]
             index2, (X1r, X2r), label2 = batch["semi"]
             batch["ssl"] = (

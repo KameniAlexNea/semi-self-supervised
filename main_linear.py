@@ -1,6 +1,7 @@
 import os
 import types
-from typing import Any, Dict
+from typing import Any
+from typing import Dict
 
 import torch
 import torch.nn as nn
@@ -57,8 +58,8 @@ def main():
     for k in list(state.keys()):
         if "encoder" in k:
             state[k.replace("encoder.", "")] = state[k]
-        elif k.startswith("linear"):
-            linear_state[k.replace("linear.", "")] = state[k]
+        elif k.startswith("classifier"):
+            linear_state[k.replace("classifier.", "")] = state[k]
         del state[k]
     backbone.load_state_dict(state, strict=False)
 

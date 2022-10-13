@@ -9,8 +9,8 @@ from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import WandbLogger
 
 from semissl.args.setup import parse_args_pretrain
-from semissl.semi import SEMISUPERVISED
 from semissl.methods import METHODS
+from semissl.semi import SEMISUPERVISED
 
 try:
     from semissl.methods.dali import PretrainABC
@@ -30,7 +30,8 @@ from semissl.utils.checkpointer import Checkpointer
 from semissl.utils.classification_dataloader import (
     prepare_data as prepare_data_classification,
 )
-from semissl.utils.pretrain_dataloader import mask_dataset, prepare_dataloader
+from semissl.utils.pretrain_dataloader import mask_dataset
+from semissl.utils.pretrain_dataloader import prepare_dataloader
 from semissl.utils.pretrain_dataloader import prepare_datasets
 from semissl.utils.pretrain_dataloader import prepare_multicrop_transform
 from semissl.utils.pretrain_dataloader import prepare_n_crop_transform
@@ -109,7 +110,10 @@ def main():
 
         label_loader = prepare_dataloader(
             label_task_dataset,
-            batch_size=max(args.batch_size // 4, int(args.batch_size * len(label_task_dataset) / len(task_dataset))),
+            batch_size=max(
+                args.batch_size // 4,
+                int(args.batch_size * len(label_task_dataset) / len(task_dataset)),
+            ),
             num_workers=args.num_workers,
         )
 
@@ -160,7 +164,7 @@ def main():
         MethodClass = SEMISUPERVISED[args.semissl](MethodClass)
 
     model: torch.nn.Module = MethodClass(
-        **args.__dict__, n_class = 10 if args.dataset.lower() == "cifar10" else 100
+        **args.__dict__, n_class=10 if args.dataset.lower() == "cifar10" else 100
     )
 
     callbacks = []

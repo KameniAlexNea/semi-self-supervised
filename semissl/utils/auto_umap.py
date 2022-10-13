@@ -11,9 +11,10 @@ import pytorch_lightning as pl
 import seaborn as sns
 import torch
 import umap
-import wandb
 from matplotlib import pyplot as plt
 from pytorch_lightning.callbacks import Callback
+
+import wandb
 
 from .gather_layer import gather
 
