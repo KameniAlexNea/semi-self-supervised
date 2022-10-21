@@ -9,14 +9,9 @@ METHODS = {
     "linear": LinearModel,
     # methods
     "barlow_twins": BarlowTwins,
-    "vicreg": VICReg
+    "vicreg": VICReg,
 }
-__all__ = [
-    "BarlowTwins",
-    "BaseModel",
-    "LinearModel",
-    "VICReg"
-]
+__all__ = ["BarlowTwins", "BaseModel", "LinearModel", "VICReg"]
 
 try:
     from semissl.methods import dali  # noqa: F401

@@ -170,7 +170,7 @@ class NNCLR(BaseModel):
             torch.Tensor: total loss composed of NNCLR loss and classification loss.
         """
 
-        targets = batch[f"task{self.current_task_idx}"][-1]
+        targets = batch[f"ssl"][-1]
 
         out = super().training_step(batch, batch_idx)
         feats1, feats2 = out["feats"]

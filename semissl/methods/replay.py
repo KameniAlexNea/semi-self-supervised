@@ -32,11 +32,11 @@ def random_replay_model(Method=object):
             self, batch: Union[Dict[str, Sequence[Any]], Sequence[Any]], batch_idx: int
         ) -> torch.Tensor:
             if torch.rand(1) < self.threshold:
-                index1, (X1, X2), label1 = batch[f"task{self.current_task_idx}"]
+                index1, (X1, X2), label1 = batch[f"ssl"]
                 # introduce probability here
                 # symetry test
                 index2, (X1r, X2r), label2 = batch[f"replay"]
-                batch[f"task{self.current_task_idx}"] = (
+                batch[f"ssl"] = (
                     torch.cat((index1.reshape(-1), index2.reshape(-1))),
                     [torch.cat((X1, X2r)), torch.cat((X2, X1r))],
                     torch.cat((label1.reshape(-1), label2.reshape(-1))),
@@ -51,11 +51,11 @@ def replay_model(Method=object):
         def training_step(
             self, batch: Union[Dict[str, Sequence[Any]], Sequence[Any]], batch_idx: int
         ) -> torch.Tensor:
-            index1, (X1, X2), label1 = batch[f"task{self.current_task_idx}"]
+            index1, (X1, X2), label1 = batch[f"ssl"]
             # introduce probability here
             # symetry test
             index2, (X1r, X2r), label2 = batch[f"replay"]
-            batch[f"task{self.current_task_idx}"] = (
+            batch[f"ssl"] = (
                 torch.cat((index1.reshape(-1), index2.reshape(-1))),
                 [torch.cat((X1, X1r)), torch.cat((X2, X2r))],
                 torch.cat((label1.reshape(-1), label2.reshape(-1))),

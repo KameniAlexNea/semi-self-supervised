@@ -1,5 +1,3 @@
-import functools
-import operator
 from argparse import ArgumentParser
 from functools import partial
 from typing import Any
@@ -9,7 +7,6 @@ from typing import List
 from typing import Sequence
 from typing import Tuple
 
-import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
@@ -62,9 +59,6 @@ class BaseModel(pl.LightningModule):
         multicrop: bool,
         num_crops: int,
         num_small_crops: int,
-        tasks: list,
-        num_tasks: int,
-        split_strategy,
         eta_lars: float = 1e-3,
         grad_clip_lars: bool = False,
         lr_decay_steps: Sequence = None,
@@ -136,18 +130,6 @@ class BaseModel(pl.LightningModule):
         self.eta_lars = eta_lars
         self.grad_clip_lars = grad_clip_lars
         self.disable_knn_eval = disable_knn_eval
-        self.tasks = tasks
-        self.num_tasks = num_tasks
-        self.split_strategy = split_strategy
-
-        self.domains = [
-            "real",
-            "quickdraw",
-            "painting",
-            "sketch",
-            "infograph",
-            "clipart",
-        ]
 
         # sanity checks on multicrop
         if self.multicrop:
@@ -263,16 +245,6 @@ class BaseModel(pl.LightningModule):
         parser.add_argument("--knn_k", default=20, type=int)
 
         return parent_parser
-
-    @property
-    def current_task_idx(self) -> int:
-        return getattr(self, "_current_task_idx", None)
-
-    @current_task_idx.setter
-    def current_task_idx(self, new_task):
-        if hasattr(self, "_current_task_idx"):
-            assert new_task >= self._current_task_idx
-        self._current_task_idx = new_task
 
     @property
     def learnable_params(self) -> List[Dict[str, Any]]:
@@ -421,14 +393,14 @@ class BaseModel(pl.LightningModule):
             Dict[str, Any]: dict with the classification loss, features and logits
         """
 
-        _, X_task, _ = batch[f"task{self.current_task_idx}"]
+        _, X_task, _ = batch[f"ssl"]
         X_task = [X_task] if isinstance(X_task, torch.Tensor) else X_task
 
         # check that we received the desired number of crops
         assert len(X_task) == self.num_crops + self.num_small_crops
 
         # forward views of the current task in the encoder
-        outs_task = [self.base_forward(x) for x in X_task[: self.num_crops]]
+        outs_task = [self(x) for x in X_task[: self.num_crops]]
         outs_task = {k: [out[k] for out in outs_task] for k in outs_task[0].keys()}
 
         if self.multicrop:
@@ -501,9 +473,6 @@ class BaseModel(pl.LightningModule):
                 "val_acc5": out["acc5"],
             }
 
-            if self.split_strategy == "domain" and len(batch) == 3:
-                metrics["domains"] = batch[0]
-
             return {**metrics, **out}
 
     def validation_epoch_end(self, outs: List[Dict[str, Any]]):
@@ -522,34 +491,9 @@ class BaseModel(pl.LightningModule):
 
             log = {"val_loss": val_loss, "val_acc1": val_acc1, "val_acc5": val_acc5}
 
-            if not self.trainer.sanity_checking:
-                preds = torch.cat([o["logits"].max(-1)[1] for o in outs]).cpu().numpy()
-                targets = torch.cat([o["targets"] for o in outs]).cpu().numpy()
-                mask_correct = preds == targets
-
-                if self.split_strategy == "class":
-                    assert self.tasks is not None
-                    for task_idx, task in enumerate(self.tasks):
-                        mask_task = np.isin(targets, np.array(task))
-                        correct_task = np.logical_and(mask_task, mask_correct).sum()
-                        log[f"val_acc1_task{task_idx}"] = correct_task / mask_task.sum()
-
-                if self.split_strategy == "domain":
-                    assert self.tasks is None
-                    domains = [o["domains"] for o in outs]
-                    domains = np.array(functools.reduce(operator.iconcat, domains, []))
-                    for task_idx, domain in enumerate(self.domains):
-                        mask_domain = np.isin(domains, np.array([domain]))
-                        correct_domain = np.logical_and(mask_domain, mask_correct).sum()
-                        log[f"val_acc1_{domain}_{task_idx}"] = (
-                            correct_domain / mask_domain.sum()
-                        )
-
-                if not self.disable_knn_eval:
-                    val_knn_acc1, val_knn_acc5 = self.knn.compute()
-                    log.update(
-                        {"val_knn_acc1": val_knn_acc1, "val_knn_acc5": val_knn_acc5}
-                    )
+            if not (self.trainer.sanity_checking or self.disable_knn_eval):
+                val_knn_acc1, val_knn_acc5 = self.knn.compute()
+                log.update({"val_knn_acc1": val_knn_acc1, "val_knn_acc5": val_knn_acc5})
 
             self.log_dict(log, sync_dist=True)
 
@@ -725,7 +669,7 @@ class BaseMomentumModel(BaseModel):
 
         outs_parent = super().training_step(batch, batch_idx)
 
-        _, X_task, _ = batch[f"task{self.current_task_idx}"]
+        _, X_task, _ = batch["ssl"]
         X_task = [X_task] if isinstance(X_task, torch.Tensor) else X_task
 
         # remove small crops

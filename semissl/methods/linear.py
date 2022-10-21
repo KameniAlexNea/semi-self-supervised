@@ -1,5 +1,3 @@
-import functools
-import operator
 from argparse import ArgumentParser
 from typing import Any
 from typing import Dict
@@ -8,7 +6,6 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 
-import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
@@ -38,10 +35,8 @@ class LinearModel(pl.LightningModule):
         exclude_bias_n_norm: bool,
         extra_optimizer_args: dict,
         scheduler: str,
-        split_strategy: str,
+        semi_proj_hidden_dim: int,
         lr_decay_steps: Optional[Sequence[int]] = None,
-        tasks: list = None,
-        domain: str = None,
         **kwargs,
     ):
         """Implements linear evaluation.
@@ -66,7 +61,12 @@ class LinearModel(pl.LightningModule):
         super().__init__()
 
         self.backbone = backbone
-        self.classifier = nn.Linear(self.backbone.inplanes, num_classes)  # type: ignore
+        self.classifier = nn.Sequential(
+            nn.Linear(self.backbone.inplanes, semi_proj_hidden_dim),
+            nn.BatchNorm1d(semi_proj_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(semi_proj_hidden_dim, num_classes), # type: ignore
+        )
 
         # training related
         self.max_epochs = max_epochs
@@ -78,19 +78,7 @@ class LinearModel(pl.LightningModule):
         self.exclude_bias_n_norm = exclude_bias_n_norm
         self.extra_optimizer_args = extra_optimizer_args
         self.scheduler = scheduler
-        self.split_strategy = split_strategy
         self.lr_decay_steps = lr_decay_steps
-        self.tasks = tasks
-        self.domain = domain
-
-        self.domains = [
-            "real",
-            "quickdraw",
-            "painting",
-            "sketch",
-            "infograph",
-            "clipart",
-        ]
 
         # all the other parameters
         self.extra_args = kwargs
@@ -155,6 +143,8 @@ class LinearModel(pl.LightningModule):
             "--scheduler", choices=SUPPORTED_SCHEDULERS, type=str, default="reduce"
         )
         parser.add_argument("--lr_decay_steps", default=None, type=int, nargs="+")
+
+        parser.add_argument("--semi_proj_hidden_dim", type=int, default=2048)
 
         return parent_parser
 
@@ -238,7 +228,7 @@ class LinearModel(pl.LightningModule):
 
         Returns:
             Tuple[int, torch.Tensor, torch.Tensor, torch.Tensor]:
-                batch size, loss, accuracy @1 and accuracy @5.
+                batch size, loss, accuracy @1 and accuracy @k.
         """
 
         *_, X, target = batch
@@ -248,8 +238,8 @@ class LinearModel(pl.LightningModule):
 
         loss = F.cross_entropy(logits, target)
 
-        acc1, acc5 = accuracy_at_k(logits, target, top_k=(1, 5))
-        return batch_size, loss, acc1, acc5, logits
+        acc1, acc3 = accuracy_at_k(logits, target, top_k=(1, 3))
+        return batch_size, loss, acc1, acc3, logits
 
     def training_step(self, batch: torch.Tensor, batch_idx: int) -> torch.Tensor:
         """Performs the training step for the linear eval.
@@ -265,9 +255,9 @@ class LinearModel(pl.LightningModule):
         # set encoder to eval mode
         self.backbone.eval()
 
-        _, loss, acc1, acc5, _ = self.shared_step(batch, batch_idx)
+        _, loss, acc1, acc3, _ = self.shared_step(batch, batch_idx)
 
-        log = {"train_loss": loss, "train_acc1": acc1, "train_acc5": acc5}
+        log = {"train_loss": loss, "train_acc1": acc1, "train_acc3": acc3}
         self.log_dict(log, on_epoch=True, sync_dist=True)
         return loss
 
@@ -284,19 +274,16 @@ class LinearModel(pl.LightningModule):
                 the classification loss and accuracies.
         """
 
-        batch_size, loss, acc1, acc5, logits = self.shared_step(batch[-2:], batch_idx)
+        batch_size, loss, acc1, acc3, logits = self.shared_step(batch[-2:], batch_idx)
 
         results = {
             "batch_size": batch_size,
             "val_loss": loss,
             "val_acc1": acc1,
-            "val_acc5": acc5,
+            "val_acc3": acc3,
             "logits": logits,
             "targets": batch[-1],
         }
-
-        if self.split_strategy == "domain" and len(batch) == 3:
-            results["domains"] = batch[0]
 
         return results
 
@@ -311,31 +298,8 @@ class LinearModel(pl.LightningModule):
 
         val_loss = weighted_mean(outs, "val_loss", "batch_size")
         val_acc1 = weighted_mean(outs, "val_acc1", "batch_size")
-        val_acc5 = weighted_mean(outs, "val_acc5", "batch_size")
+        val_acc3 = weighted_mean(outs, "val_acc3", "batch_size")
 
-        log = {"val_loss": val_loss, "val_acc1": val_acc1, "val_acc5": val_acc5}
-
-        if not self.trainer.sanity_checking:
-            preds = torch.cat([o["logits"].max(-1)[1] for o in outs]).cpu().numpy()
-            targets = torch.cat([o["targets"] for o in outs]).cpu().numpy()
-            mask_correct = preds == targets
-
-            if self.split_strategy == "class":
-                assert self.tasks is not None
-                for task_idx, task in enumerate(self.tasks):
-                    mask_task = np.isin(targets, np.array(task))
-                    correct_task = np.logical_and(mask_task, mask_correct).sum()
-                    log[f"val_acc1_task{task_idx}"] = correct_task / mask_task.sum()
-
-            if self.split_strategy == "domain":
-                assert self.tasks is None
-                domains = [o["domains"] for o in outs]
-                domains = np.array(functools.reduce(operator.iconcat, domains, []))
-                for task_idx, domain in enumerate(self.domains):
-                    mask_domain = np.isin(domains, np.array([domain]))
-                    correct_domain = np.logical_and(mask_domain, mask_correct).sum()
-                    log[f"val_acc1_{domain}_{task_idx}"] = (
-                        correct_domain / mask_domain.sum()
-                    )
+        log = {"val_loss": val_loss, "val_acc1": val_acc1, "val_acc3": val_acc3}
 
         self.log_dict(log, sync_dist=True)

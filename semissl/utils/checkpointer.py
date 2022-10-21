@@ -64,9 +64,6 @@ class Checkpointer(Callback):
         parser.add_argument(
             "--checkpoint_dir", default=Path("trained_models"), type=Path
         )
-        parser.add_argument(
-            "--checkpoint_dir_dsdm", default=Path("trained_dsdm_models"), type=Path
-        )
         parser.add_argument("--checkpoint_frequency", default=1, type=int)
         return parent_parser
 

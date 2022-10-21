@@ -1,7 +1,6 @@
 from typing import Dict
 from typing import List
 from typing import Sequence
-from typing import Union
 
 import torch
 
@@ -55,4 +54,3 @@ def weighted_mean(outputs: List[Dict], key: str, batch_size_key: str) -> float:
         n += out[batch_size_key]
     value = value / n
     return value.squeeze(0)
-

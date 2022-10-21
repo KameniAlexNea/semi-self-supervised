@@ -4,10 +4,11 @@ import pytorch_lightning as pl
 
 from semissl.args.dataset import augmentations_args
 from semissl.args.dataset import dataset_args
+from semissl.args.semi import semi_ssl_args
 from semissl.args.utils import additional_setup_linear
 from semissl.args.utils import additional_setup_pretrain
-from semissl.semi import SEMISUPERVISED
 from semissl.methods import METHODS
+from semissl.semi import SEMISUPERVISED
 from semissl.utils.checkpointer import Checkpointer
 
 try:
@@ -33,6 +34,7 @@ def parse_args_pretrain() -> argparse.Namespace:
     # add shared arguments
     dataset_args(parser)
     augmentations_args(parser)
+    semi_ssl_args(parser)
 
     # add pytorch lightning trainer args
     parser = pl.Trainer.add_argparse_args(parser)
@@ -46,13 +48,12 @@ def parse_args_pretrain() -> argparse.Namespace:
     # add model specific args
     parser = METHODS[temp_args.method].add_model_specific_args(parser)
 
-    # add distiller args
-    if temp_args.distiller:
-        parser = SEMISUPERVISED[temp_args.distiller]().add_model_specific_args(parser)
+    # add semissl args
+    if temp_args.semissl:
+        parser = SEMISUPERVISED[temp_args.semissl]().add_model_specific_args(parser)
 
     # add checkpoint and auto umap args
     parser.add_argument("--pretrained_model", type=str, default=None)
-    parser.add_argument("--pretrained_model_dsdm", type=str, default=None)
     parser.add_argument("--save_checkpoint", action="store_true")
     parser.add_argument("--auto_umap", action="store_true")
     temp_args, _ = parser.parse_known_args()
@@ -101,11 +102,6 @@ def parse_args_linear() -> argparse.Namespace:
     temp_args, _ = parser.parse_known_args()
 
     parser.add_argument("--save_checkpoint", action="store_true")
-    parser.add_argument("--num_tasks", type=int, default=2)
-    SPLIT_STRATEGIES = ["class", "data", "domain", "task"]
-    parser.add_argument(
-        "--split_strategy", choices=SPLIT_STRATEGIES, type=str, required=True
-    )
     parser.add_argument("--domain", type=str, default=None)
 
     # add checkpointer args (only if logging is enabled)
