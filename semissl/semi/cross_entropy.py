@@ -20,7 +20,7 @@ def cross_entropy_semi_wrapper(Method=object):
             super().__init__(**kwargs)
             self.output_dim = self.encoder.inplanes
             self.semi_lamb = semi_lamb
-            self.classifier = nn.Sequential(
+            self.linear = nn.Sequential(
                 nn.Linear(self.output_dim, semi_proj_hidden_dim),
                 nn.BatchNorm1d(semi_proj_hidden_dim),
                 nn.ReLU(),
@@ -48,8 +48,8 @@ def cross_entropy_semi_wrapper(Method=object):
 
             extra_learnable_params = [
                 {
-                    "name": "classifier",
-                    "params": self.classifier.parameters(),
+                    "name": "linear",
+                    "params": self.linear.parameters(),
                     "lr": self.classifier_lr,
                     "weight_decay": 0,
                 },
@@ -58,7 +58,7 @@ def cross_entropy_semi_wrapper(Method=object):
 
         def forward(self, X, *args, **kwargs):
             out = super().forward(X, *args, **kwargs)
-            z = self.classifier(out["feats"])
+            z = self.linear(out["feats"])
             return {**out, "p": z}
 
         def training_step(self, batch: Sequence[Any], batch_idx: int) -> torch.Tensor:

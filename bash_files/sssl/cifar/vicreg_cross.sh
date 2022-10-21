@@ -2,10 +2,10 @@ python3 main_continual.py \
     --dataset cifar10 \
     --encoder resnet18 \
     --data_dir $DATA_DIR \
-    --max_epochs 100 \
+    --max_epochs 200 \
     --gpus 0 \
     --num_workers 4 \
-    --precision 32 \
+    --precision 16 \
     --optimizer sgd \
     --lars \
     --grad_clip_lars \
@@ -15,18 +15,18 @@ python3 main_continual.py \
     --lr 0.3 \
     --classifier_lr 0.1 \
     --weight_decay 1e-4 \
-    --batch_size 128 \
+    --batch_size 256 \
     --brightness 0.4 \
     --contrast 0.4 \
     --saturation 0.2 \
     --hue 0.1 \
     --gaussian_prob 0.0 0.0 \
     --solarization_prob 0.0 0.2 \
-    --name barlow-cifar10-semissl \
+    --name vicreg-cifar10-cross_entropy-sssl \
     --project semi-supervised-learning \
     --entity alexneakameni \
     --save_checkpoint \
-    --method barlow_twins \
+    --method vicreg \
     --proj_hidden_dim 2048 \
     --output_dim 2048 \
     --scale_loss 0.1 \

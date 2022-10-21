@@ -58,8 +58,8 @@ def main():
     for k in list(state.keys()):
         if "encoder" in k:
             state[k.replace("encoder.", "")] = state[k]
-        elif k.startswith("classifier"):
-            linear_state[k.replace("classifier.", "")] = state[k]
+        elif k.startswith("linear"):
+            linear_state[k.replace("linear.", "")] = state[k]
         del state[k]
     backbone.load_state_dict(state, strict=False)
 
@@ -78,7 +78,7 @@ def main():
     model = MethodClass(backbone, **args.__dict__)
     model.classifier.load_state_dict(linear_state, strict=False)
 
-    _, val_loader = prepare_data(
+    train_loader, val_loader = prepare_data(
         args.dataset,
         data_dir=args.data_dir,
         train_dir=args.train_dir,
@@ -120,6 +120,7 @@ def main():
         strategy=DDPStrategy(find_unused_parameters=False),
         accelerator="gpu",
     )
+    trainer.fit(model, train_loader, val_loader)
     print(trainer.validate(model, val_loader))
 
 

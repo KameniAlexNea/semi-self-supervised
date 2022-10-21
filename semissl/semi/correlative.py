@@ -17,17 +17,17 @@ from semissl.semi.base import base_semi_wrapper
 def correlative_semi_wrapper(Method=object):
     class CorrelatedSemiWrapper(base_semi_wrapper(Method)):
         def __init__(
-            self, n_class: int, lamb: float, scale: float, cross_weight: float, semi_proj_hidden_dim: int, **kwargs
+            self, n_class: int, semi_lamb: float, semi_scale_loss: float, semi_cross_weight: float, semi_proj_hidden_dim: int, **kwargs
         ) -> None:
             super().__init__(**kwargs)
 
-            self.lamb = lamb
-            self.scale = scale
-            self.cross_weight = cross_weight
+            self.semi_lamb = semi_lamb
+            self.semi_scale_loss = semi_scale_loss
+            self.semi_cross_weight = semi_cross_weight
 
             self.output_dim = self.encoder.inplanes
 
-            self.classifier = nn.Sequential(
+            self.linear = nn.Sequential(
                 nn.Linear(self.output_dim, semi_proj_hidden_dim),
                 nn.BatchNorm1d(semi_proj_hidden_dim),
                 nn.ReLU(),
@@ -44,8 +44,8 @@ def correlative_semi_wrapper(Method=object):
 
             extra_learnable_params = [
                 {
-                    "name": "classifier",
-                    "params": self.classifier.parameters(),
+                    "name": "linear",
+                    "params": self.linear.parameters(),
                     "lr": self.classifier_lr,
                     "weight_decay": 0,
                 },
@@ -58,9 +58,9 @@ def correlative_semi_wrapper(Method=object):
         ) -> argparse.ArgumentParser:
             parser = parent_parser.add_argument_group("correlative_semi")
 
-            parser.add_argument("--lamb", type=float, default=5e-3)
-            parser.add_argument("--scale", type=float, default=0.025)
-            parser.add_argument("--cross_weight", type=float, default=10)
+            parser.add_argument("--semi_lamb", type=float, default=5e-3)
+            parser.add_argument("--semi_scale_loss", type=float, default=0.025)
+            parser.add_argument("--semi_cross_weight", type=float, default=10)
 
             parser.add_argument("--semi_proj_hidden_dim", type=int, default=2048)
 
@@ -68,7 +68,7 @@ def correlative_semi_wrapper(Method=object):
 
         def forward(self, X, *args, **kwargs):
             out = super().forward(X, *args, **kwargs)
-            z = self.classifier(out["feats"])
+            z = self.linear(out["feats"])
             return {**out, "p": z}
 
         def training_step(self, batch: Sequence[Any], batch_idx: int) -> torch.Tensor:
@@ -85,7 +85,7 @@ def correlative_semi_wrapper(Method=object):
 
             cross_loss = cross_correlation_loss_func(p1, p2, labels, labels)
 
-            corr_loss = feature_correlation_loss(z1, z2, labels, self.lamb, self.scale)
+            corr_loss = feature_correlation_loss(z1, z2, labels, self.semi_lamb, self.semi_scale_loss)
 
             self.log(
                 "train_correlation_semi_loss",
@@ -101,6 +101,6 @@ def correlative_semi_wrapper(Method=object):
                 sync_dist=True,
             )
 
-            return out["loss"] + corr_loss + self.cross_weight * cross_loss
+            return out["loss"] + corr_loss + self.semi_cross_weight * cross_loss
 
     return CorrelatedSemiWrapper

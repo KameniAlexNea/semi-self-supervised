@@ -35,6 +35,7 @@ class LinearModel(pl.LightningModule):
         exclude_bias_n_norm: bool,
         extra_optimizer_args: dict,
         scheduler: str,
+        semi_proj_hidden_dim: int,
         lr_decay_steps: Optional[Sequence[int]] = None,
         **kwargs,
     ):
@@ -60,7 +61,12 @@ class LinearModel(pl.LightningModule):
         super().__init__()
 
         self.backbone = backbone
-        self.classifier = nn.Linear(self.backbone.inplanes, num_classes)  # type: ignore
+        self.classifier = nn.Sequential(
+            nn.Linear(self.backbone.inplanes, semi_proj_hidden_dim),
+            nn.BatchNorm1d(semi_proj_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(semi_proj_hidden_dim, num_classes), # type: ignore
+        )
 
         # training related
         self.max_epochs = max_epochs
@@ -137,6 +143,8 @@ class LinearModel(pl.LightningModule):
             "--scheduler", choices=SUPPORTED_SCHEDULERS, type=str, default="reduce"
         )
         parser.add_argument("--lr_decay_steps", default=None, type=int, nargs="+")
+
+        parser.add_argument("--semi_proj_hidden_dim", type=int, default=2048)
 
         return parent_parser
 

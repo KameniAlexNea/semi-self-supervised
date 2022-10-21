@@ -15,9 +15,10 @@ python3 main_linear.py \
     --weight_decay 0 \
     --batch_size 256 \
     --num_workers 4 \
-    --name barlow-cifar10-semissl-linear \
+    --name cifar10-semissl-linear \
     --project semi-supervised-learning \
     --entity alexneakameni \
     --pretrained_feature_extractor $PRETRAINED_PATH \
     --wandb \
+    --semi_supervised 0.08 \
     --save_checkpoint

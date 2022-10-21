@@ -178,7 +178,7 @@ def main():
             entity=args.entity,
             offline=args.offline,
             reinit=True,
-            # log_model=True,
+            log_model=True,
         )
         if args.resume_from_checkpoint is None:
             wandb_logger.watch(model, log="gradients", log_freq=100)
