@@ -2,10 +2,10 @@ python3 main_continual.py \
     --dataset cifar10 \
     --encoder resnet18 \
     --data_dir $DATA_DIR \
-    --max_epochs 200 \
+    --max_epochs 500 \
     --gpus 0 \
     --num_workers 4 \
-    --precision 16 \
+    --precision 32 \
     --optimizer sgd \
     --lars \
     --grad_clip_lars \
@@ -34,5 +34,5 @@ python3 main_continual.py \
     --semissl correlative \
     --semi_rate 0.08 \
     --semi_scale_loss 0.025 \
-    --semi_lamb 0.005 \
+    --semi_lamb 0.008 \
     --semi_cross_weight 15

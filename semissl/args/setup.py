@@ -19,7 +19,7 @@ else:
     _umap_available = True
 
 
-def parse_args_pretrain() -> argparse.Namespace:
+def parse_args_pretrain(default_args: str = None) -> argparse.Namespace:
     """Parses dataset, augmentation, pytorch lightning, model specific and additional args.
 
     First adds shared args such as dataset, augmentation and pytorch lightning args, then pulls the
@@ -43,7 +43,7 @@ def parse_args_pretrain() -> argparse.Namespace:
     parser.add_argument("--method", type=str)
 
     # THIS LINE IS KEY TO PULL THE MODEL NAME
-    temp_args, _ = parser.parse_known_args()
+    temp_args, _ = parser.parse_known_args(default_args)
 
     # add model specific args
     parser = METHODS[temp_args.method].add_model_specific_args(parser)
@@ -56,7 +56,7 @@ def parse_args_pretrain() -> argparse.Namespace:
     parser.add_argument("--pretrained_model", type=str, default=None)
     parser.add_argument("--save_checkpoint", action="store_true")
     parser.add_argument("--auto_umap", action="store_true")
-    temp_args, _ = parser.parse_known_args()
+    temp_args, _ = parser.parse_known_args(default_args)
 
     # optionally add checkpointer and AutoUMAP args
     if temp_args.save_checkpoint:
@@ -66,7 +66,7 @@ def parse_args_pretrain() -> argparse.Namespace:
         parser = AutoUMAP.add_auto_umap_args(parser)
 
     # parse args
-    args = parser.parse_args()
+    args = parser.parse_args(default_args)
 
     # prepare arguments with additional setup
     additional_setup_pretrain(args)

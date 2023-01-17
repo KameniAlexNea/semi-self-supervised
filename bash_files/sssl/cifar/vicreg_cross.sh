@@ -2,7 +2,7 @@ python3 main_continual.py \
     --dataset cifar10 \
     --encoder resnet18 \
     --data_dir $DATA_DIR \
-    --max_epochs 200 \
+    --max_epochs 500 \
     --gpus 0 \
     --num_workers 4 \
     --precision 16 \

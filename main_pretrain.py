@@ -38,10 +38,10 @@ from semissl.utils.pretrain_dataloader import prepare_n_crop_transform
 from semissl.utils.pretrain_dataloader import prepare_transform
 
 
-def main():
+def main(default_args=None):
     seed_everything(5)
 
-    args = parse_args_pretrain()
+    args = parse_args_pretrain(default_args)
 
     # online eval dataset reloads when task dataset is over
     args.multiple_trainloader_mode = "max_size_cycle"
@@ -111,7 +111,7 @@ def main():
         label_loader = prepare_dataloader(
             label_task_dataset,
             batch_size=max(
-                args.batch_size // 4,
+                (args.batch_size // 4) if args.batch_size < 257  else (args.batch_size // 8),
                 int(args.batch_size * len(label_task_dataset) / len(task_dataset)),
             ),
             num_workers=args.num_workers,
@@ -176,9 +176,8 @@ def main():
             name=f"{args.name}",
             project=args.project,
             entity=args.entity,
-            offline=args.offline,
+            offline=True,
             reinit=True,
-            log_model=True,
         )
         if args.resume_from_checkpoint is None:
             wandb_logger.watch(model, log="gradients", log_freq=100)
@@ -213,9 +212,9 @@ def main():
     )
 
     if args.dali:
-        trainer.fit(model, val_dataloaders=val_loader)
+        trainer.fit(model, val_dataloaders=val_loader, ckpt_path=args.resume_from_checkpoint)
     else:
-        trainer.fit(model, train_loaders, val_loader)
+        trainer.fit(model, train_loaders, val_loader, ckpt_path=args.resume_from_checkpoint)
 
 
 if __name__ == "__main__":

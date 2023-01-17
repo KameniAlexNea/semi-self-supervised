@@ -162,3 +162,5 @@ zip_everything.sh
 format.sh
 *.h5
 .vs*
+
+launch.slurm
