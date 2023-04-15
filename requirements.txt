@@ -1,7 +1,6 @@
 torch
 torchvision
 pytorch-lightning
-lightning-bolts
 wandb
 sklearn
 einops
