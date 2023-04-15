@@ -5,6 +5,7 @@ N_CLASSES_PER_DATASET = {
     "cifar10": 10,
     "cifar100": 100,
     "stl10": 10,
+    "lfwpairs": 2,
     "imagenet": 1000,
     "imagenet100": 100,
     "domainnet": 345,
@@ -146,7 +147,7 @@ def additional_setup_pretrain(args: Namespace):
                 kwargs["mean"] = args.mean
                 kwargs["std"] = args.std
 
-    if args.dataset in ["cifar10", "cifar100", "stl10"]:
+    if args.dataset in ["cifar10", "cifar100", "stl10", "lfwpairs"]:
         if isinstance(args.transform_kwargs, dict):
             del args.transform_kwargs["size"]
         else:

@@ -10,7 +10,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
+from semissl.utils.linearwarnupcosine import LinearWarmupCosineAnnealingLR
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.optim.lr_scheduler import MultiStepLR

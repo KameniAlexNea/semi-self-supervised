@@ -9,6 +9,7 @@ from typing import Optional
 from typing import Sequence
 from typing import Type
 from typing import Union
+from semissl.utils.datasets import LFWPairsDataset
 
 import torch
 import torchvision
@@ -255,6 +256,51 @@ class CifarTransform(BaseTransform):
         )
 
 
+class LFWPairsTransform(BaseTransform):
+    def __init__(
+        self,
+        brightness: float,
+        contrast: float,
+        saturation: float,
+        hue: float,
+        gaussian_prob: float = 0.0,
+        solarization_prob: float = 0.0,
+        min_scale: float = 0.08,
+    ):
+        """Applies LFWPairs transformations.
+
+        Args:
+            brightness (float): sampled uniformly in [max(0, 1 - brightness), 1 + brightness].
+            contrast (float): sampled uniformly in [max(0, 1 - contrast), 1 + contrast].
+            saturation (float): sampled uniformly in [max(0, 1 - saturation), 1 + saturation].
+            hue (float): sampled uniformly in [-hue, hue].
+            gaussian_prob (float, optional): probability of applying gaussian blur. Defaults to 0.0.
+            solarization_prob (float, optional): probability of applying solarization. Defaults
+                to 0.0.
+            min_scale (float, optional): minimum scale of the crops. Defaults to 0.08.
+        """
+
+        super().__init__()
+        self.transform = transforms.Compose(
+            [
+                transforms.RandomResizedCrop(
+                    (250, 250),
+                    scale=(min_scale, 1.0),
+                    interpolation=transforms.InterpolationMode.BICUBIC,
+                ),
+                transforms.RandomApply(
+                    [transforms.ColorJitter(brightness, contrast, saturation, hue)],
+                    p=0.8,
+                ),
+                transforms.RandomGrayscale(p=0.2),
+                transforms.RandomApply([GaussianBlur()], p=gaussian_prob),
+                transforms.RandomApply([Solarization()], p=solarization_prob),
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.ToTensor(),
+                transforms.Normalize((0.4914, 0.4823, 0.4466), (0.247, 0.243, 0.261)),
+            ]
+        )
+
 class STLTransform(BaseTransform):
     def __init__(
         self,
@@ -476,6 +522,24 @@ class MulticropCifarTransform(BaseTransform):
             ]
         )
 
+class MulticropLFWPairsTransform(BaseTransform):
+    def __init__(self):
+        """Class that applies multicrop transform for LFWPairs"""
+
+        super().__init__()
+
+        self.transform = transforms.Compose(
+            [
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomApply(
+                    [transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8
+                ),
+                transforms.RandomGrayscale(p=0.2),
+                transforms.ToTensor(),
+                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261)),
+            ]
+        )
+
 
 class MulticropSTLTransform(BaseTransform):
     def __init__(self):
@@ -595,6 +659,8 @@ def prepare_transform(dataset: str, multicrop: bool = False, **kwargs) -> Any:
         return CifarTransform(**kwargs) if not multicrop else MulticropCifarTransform()
     elif dataset == "stl10":
         return STLTransform(**kwargs) if not multicrop else MulticropSTLTransform()
+    elif dataset == "lfwpairs":
+        return LFWPairsTransform(**kwargs) if not multicrop else MulticropLFWPairsTransform()
     elif dataset in ["imagenet", "imagenet100"]:
         return (
             ImagenetTransform(**kwargs)
@@ -718,6 +784,14 @@ def prepare_datasets(
         dataset = dataset_with_index(STL10)(
             data_dir / train_dir,
             split="train+unlabeled",
+            download=True,
+            transform=task_transform,
+        )
+
+    elif dataset == "lfwpairs":
+        dataset = dataset_with_index(LFWPairsDataset)(
+            data_dir / train_dir,
+            split="10fold",
             download=True,
             transform=task_transform,
         )

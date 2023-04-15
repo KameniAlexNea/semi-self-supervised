@@ -1,8 +1,8 @@
 torch
 torchvision
-pytorch-lightning
+pytorch-lightning<2.0
 wandb
-sklearn
+scikit-learn
 einops
 seaborn
 matplotlib

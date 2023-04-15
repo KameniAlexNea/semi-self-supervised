@@ -40,6 +40,7 @@ from semissl.utils.pretrain_dataloader import prepare_transform
 
 def main(default_args=None):
     seed_everything(5)
+    torch.set_float32_matmul_precision("medium")
 
     args = parse_args_pretrain(default_args)
 
@@ -104,18 +105,21 @@ def main(default_args=None):
             no_labels=args.no_labels,
         )
 
-        task_dataset, label_task_dataset = mask_dataset(
-            task_dataset, args.dataset, args.semi_rate
-        )
+        label_task_dataset = None
+        label_loader = None
+        if args.semissl:
+            task_dataset, label_task_dataset = mask_dataset(
+                task_dataset, args.dataset, args.semi_rate
+            )
 
-        label_loader = prepare_dataloader(
-            label_task_dataset,
-            batch_size=max(
-                (args.batch_size // 4) if args.batch_size < 257  else (args.batch_size // 8),
-                int(args.batch_size * len(label_task_dataset) / len(task_dataset)),
-            ),
-            num_workers=args.num_workers,
-        )
+            label_loader = prepare_dataloader(
+                label_task_dataset,
+                batch_size=max(
+                    (args.batch_size // 4) if args.batch_size < 257  else (args.batch_size // 8),
+                    int(args.batch_size * len(label_task_dataset) / len(task_dataset)),
+                ),
+                num_workers=args.num_workers,
+            )
 
         task_loader = prepare_dataloader(
             task_dataset,
@@ -123,7 +127,9 @@ def main(default_args=None):
             num_workers=args.num_workers,
         )
 
-        train_loaders = {"ssl": task_loader, "semi": label_loader}
+        train_loaders = {"ssl": task_loader}
+        if args.semissl:
+            train_loaders["semi"] = label_loader
 
         if args.online_eval_batch_size:
             online_eval_loader = prepare_dataloader(
@@ -136,7 +142,7 @@ def main(default_args=None):
     # normal dataloader for when it is available
     if args.dataset == "custom" and (args.no_labels or args.val_dir is None):
         val_loader = None
-    elif args.dataset in ["imagenet100", "imagenet"] and args.val_dir is None:
+    elif args.dataset in ["imagenet100", "imagenet", "lfwpairs"] and args.val_dir is None:
         val_loader = None
     else:
         _, val_loader = prepare_data_classification(

@@ -2,6 +2,22 @@ import os
 
 from PIL import Image
 from torch.utils.data.dataset import Dataset
+from torchvision import datasets
+
+class LFWPairsDataset(Dataset):
+    def __init__(self, root, split="10fold", transform=None, download=False) -> None:
+        super().__init__()
+        self.transform=transform
+        self.dataset = datasets.LFWPairs(root=root, split=split, download=download)
+
+    def __len__(self):
+        return len(self.dataset) * 2
+
+    def __getitem__(self, index: int):
+        img = self.dataset[index // 2][index % 2]
+        if self.transform is not None:
+            img = self.transform(img)
+        return img
 
 
 class DomainNetDataset(Dataset):
