@@ -37,6 +37,7 @@ class LinearModel(pl.LightningModule):
         scheduler: str,
         semi_proj_hidden_dim: int,
         lr_decay_steps: Optional[Sequence[int]] = None,
+        inplanes = None,
         **kwargs,
     ):
         """Implements linear evaluation.
@@ -62,7 +63,7 @@ class LinearModel(pl.LightningModule):
 
         self.backbone = backbone
         self.classifier = nn.Sequential(
-            nn.Linear(self.backbone.inplanes, semi_proj_hidden_dim),
+            nn.Linear(inplanes or self.backbone.inplanes, semi_proj_hidden_dim),
             nn.BatchNorm1d(semi_proj_hidden_dim),
             nn.ReLU(),
             nn.Linear(semi_proj_hidden_dim, num_classes), # type: ignore
@@ -218,7 +219,7 @@ class LinearModel(pl.LightningModule):
             return [optimizer], [scheduler]
 
     def shared_step(
-        self, batch: Tuple, batch_idx: int
+        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
     ) -> Tuple[int, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Performs operations that are shared between the training nd validation steps.
 
@@ -231,7 +232,7 @@ class LinearModel(pl.LightningModule):
                 batch size, loss, accuracy @1 and accuracy @k.
         """
 
-        *_, X, target = batch
+        X, target = batch
         batch_size = X.size(0)
 
         logits = self(X)["logits"]
@@ -303,3 +304,36 @@ class LinearModel(pl.LightningModule):
         log = {"val_loss": val_loss, "val_acc1": val_acc1, "val_acc3": val_acc3}
 
         self.log_dict(log, sync_dist=True)
+
+
+class LinearRecognitionModel(LinearModel):
+    def __init__(self, cat_strategy: str, **kwargs):
+        super().__init__(inplanes=kwargs["backbone"].inplanes*2, **kwargs)
+        self.cat_strategy = cat_strategy
+
+    @staticmethod
+    def add_model_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
+        parser = parent_parser.add_argument_group("linear_frecognition")
+        # encoder args
+        SUPPORTED_NETWORKS = ["add", "mult", "cat"]
+
+        parser.add_argument("--cat_strategy", choices=SUPPORTED_NETWORKS, type=str)
+        return super(LinearRecognitionModel, LinearRecognitionModel).add_model_specific_args(parent_parser)
+
+    @torch.no_grad()
+    def cat_method(self, batch: Tuple[torch.Tensor, torch.Tensor]):
+        if self.cat_strategy == "add":
+            return (batch[0] - batch[1]).abs()
+        elif self.cat_strategy == "mult":
+            return batch[0] * batch[1]
+        return torch.cat(batch, dim=1)
+    
+    def forward(self, X: Tuple[torch.Tensor, torch.Tensor]) -> Dict[str, Any]:
+        with torch.no_grad():
+            embs = self.cat_method([self.backbone(x) for x in X])
+        logits = self.classifier(embs)
+        return {"feats": embs, "logits": logits}
+
+    def shared_step(self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_idx: int) -> Tuple[int, torch.Tensor, torch.Tensor, torch.Tensor]:
+        X1, X2, targets = batch
+        return super().shared_step(((X1, X2), targets), batch_idx)

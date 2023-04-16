@@ -78,6 +78,24 @@ def prepare_transforms(dataset: str) -> Tuple[nn.Module, nn.Module]:
         ),
     }
 
+    lfw_pipeline = {
+        "T_train": transforms.Compose(
+            [
+                transforms.RandomResizedCrop(size=250, scale=(0.08, 1.0)),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize((0.4914, 0.4823, 0.4466), (0.247, 0.243, 0.261)),
+            ]
+        ),
+        "T_val": transforms.Compose(
+            [
+                transforms.Resize((250, 250)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.4914, 0.4823, 0.4466), (0.247, 0.243, 0.261)),
+            ]
+        ),
+    }
+
     stl_pipeline = {
         "T_train": transforms.Compose(
             [
@@ -125,6 +143,7 @@ def prepare_transforms(dataset: str) -> Tuple[nn.Module, nn.Module]:
         "cifar10": cifar_pipeline,
         "cifar100": cifar_pipeline,
         "stl10": stl_pipeline,
+        "lfwpairs": lfw_pipeline,
         "imagenet100": imagenet_pipeline,
         "imagenet": imagenet_pipeline,
         "domainnet": imagenet_pipeline,
@@ -213,6 +232,20 @@ def prepare_datasets(
             transform=T_train,
         )
         val_dataset = STL10(
+            data_dir / val_dir,
+            split="test",
+            download=True,
+            transform=T_val,
+        )
+    
+    elif dataset == "lfwpairs":
+        train_dataset = torchvision.datasets.LFWPairs(
+            data_dir / train_dir,
+            split="train",
+            download=True,
+            transform=T_train,
+        )
+        val_dataset = torchvision.datasets.LFWPairs(
             data_dir / val_dir,
             split="test",
             download=True,
