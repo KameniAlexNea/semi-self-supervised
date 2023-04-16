@@ -178,6 +178,7 @@ class NCropAugmentation:
 
         if isinstance(transform, Iterable):
             self.one_transform_per_crop = True
+            self.num_crops = num_crops
             assert num_crops == len(transform)
         else:
             self.one_transform_per_crop = False

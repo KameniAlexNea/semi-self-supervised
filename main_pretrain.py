@@ -36,6 +36,7 @@ from semissl.utils.pretrain_dataloader import prepare_datasets
 from semissl.utils.pretrain_dataloader import prepare_multicrop_transform
 from semissl.utils.pretrain_dataloader import prepare_n_crop_transform
 from semissl.utils.pretrain_dataloader import prepare_transform
+from semissl.args.utils import N_CLASSES_PER_DATASET
 
 
 def main(default_args=None):
@@ -69,6 +70,7 @@ def main(default_args=None):
             print("Transforms:")
             pprint(transform)
 
+        online_eval_transform = None
         if args.multicrop:
             assert not args.unique_augs == 1
 
@@ -76,6 +78,8 @@ def main(default_args=None):
                 size_crops = [32, 24]
             elif args.dataset == "stl10":
                 size_crops = [96, 58]
+            elif args.dataset == "lfwpairs":
+                size_crops = [250, 224]
             # imagenet or custom dataset
             else:
                 size_crops = [224, 96]
@@ -92,13 +96,13 @@ def main(default_args=None):
             online_eval_transform = (
                 transform[-1] if isinstance(transform, list) else transform
             )
-            task_transform = prepare_n_crop_transform(
+            transform = prepare_n_crop_transform(
                 transform, num_crops=args.num_crops
             )
 
         task_dataset, online_eval_dataset = prepare_datasets(
             args.dataset,
-            task_transform=task_transform,
+            task_transform=transform,
             online_eval_transform=online_eval_transform,
             data_dir=args.data_dir,
             train_dir=args.train_dir,
@@ -170,7 +174,7 @@ def main(default_args=None):
         MethodClass = SEMISUPERVISED[args.semissl](MethodClass)
 
     model: torch.nn.Module = MethodClass(
-        **args.__dict__, n_class=10 if args.dataset.lower() == "cifar10" else 100
+        **args.__dict__, n_class=N_CLASSES_PER_DATASET[args.dataset.lower()]
     )
 
     callbacks = []

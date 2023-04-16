@@ -17,7 +17,7 @@ class LFWPairsDataset(Dataset):
         img = self.dataset[index // 2][index % 2]
         if self.transform is not None:
             img = self.transform(img)
-        return img
+        return img, -1
 
 
 class DomainNetDataset(Dataset):

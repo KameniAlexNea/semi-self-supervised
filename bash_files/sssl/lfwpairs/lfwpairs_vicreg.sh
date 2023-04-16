@@ -15,7 +15,7 @@ python3 main_continual.py \
     --lr 1.0 \
     --classifier_lr 0.1 \
     --weight_decay 1e-4 \
-    --batch_size 256 \
+    --batch_size 128 \
     --brightness 0.4 \
     --contrast 0.4 \
     --saturation 0.2 \
@@ -29,4 +29,5 @@ python3 main_continual.py \
     --method vicreg \
     --proj_hidden_dim 2048 \
     --output_dim 2048 \
-    --wandb
+    --wandb \
+    --offline

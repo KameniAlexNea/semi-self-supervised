@@ -395,7 +395,6 @@ class BaseModel(pl.LightningModule):
 
         _, X_task, _ = batch[f"ssl"]
         X_task = [X_task] if isinstance(X_task, torch.Tensor) else X_task
-
         # check that we received the desired number of crops
         assert len(X_task) == self.num_crops + self.num_small_crops
 
