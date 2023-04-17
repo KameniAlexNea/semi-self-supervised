@@ -1,6 +1,6 @@
 from semissl.methods.barlow_twins import BarlowTwins
 from semissl.methods.base import BaseModel
-from semissl.methods.linear import LinearModel
+from semissl.methods.linear import LinearRecognitionModel as LinearModel
 from semissl.methods.vicreg import VICReg
 
 METHODS = {

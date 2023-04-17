@@ -202,6 +202,7 @@ def prepare_datasets(
         "cifar10",
         "cifar100",
         "stl10",
+        "lfwpairs",
         "imagenet",
         "imagenet100",
         "domainnet",

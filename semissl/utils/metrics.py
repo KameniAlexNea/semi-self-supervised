@@ -21,7 +21,7 @@ def accuracy_at_k(
     """
 
     with torch.no_grad():
-        maxk = max(top_k)
+        maxk = min(max(top_k), outputs.size(1))
         batch_size = targets.size(0)
 
         _, pred = outputs.topk(maxk, 1, True, True)

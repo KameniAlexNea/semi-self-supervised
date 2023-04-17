@@ -11,6 +11,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.strategies import DDPStrategy
 from torchvision.models import resnet18
+from torchvision.models import resnet34
 from torchvision.models import resnet50
 
 from semissl.args.setup import parse_args_linear
@@ -21,22 +22,25 @@ except ImportError:
     _dali_avaliable = False
 else:
     _dali_avaliable = True
-from semissl.methods.linear import LinearModel
+from semissl.methods.linear import LinearRecognitionModel as LinearModel
 from semissl.utils.checkpointer import Checkpointer
 from semissl.utils.classification_dataloader import prepare_data
 
 
 def main():
     seed_everything(5)
+    torch.set_float32_matmul_precision('medium')
 
     args = parse_args_linear()
 
     if args.encoder == "resnet18":
         backbone = resnet18()
+    elif args.encoder == "resnet34":
+        backbone = resnet34()
     elif args.encoder == "resnet50":
         backbone = resnet50()
     else:
-        raise ValueError("Only [resnet18, resnet50] are currently supported.")
+        raise ValueError("Only [resnet18, resnet34, resnet50] are currently supported.")
 
     if args.cifar:
         backbone.conv1 = nn.Conv2d(
@@ -75,7 +79,7 @@ def main():
     else:
         MethodClass = LinearModel
 
-    model = MethodClass(backbone, **args.__dict__)
+    model = MethodClass(backbone=backbone, **args.__dict__)
     model.classifier.load_state_dict(linear_state, strict=False)
 
     train_loader, val_loader = prepare_data(

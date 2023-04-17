@@ -150,11 +150,12 @@ class BaseModel(pl.LightningModule):
             self.min_lr = self.min_lr * self.accumulate_grad_batches
             self.warmup_start_lr = self.warmup_start_lr * self.accumulate_grad_batches
 
-        assert encoder in ["resnet18", "resnet50"]
+        assert encoder in ["resnet18", "resnet50", "resnet34"]
         from torchvision.models import resnet18
+        from torchvision.models import resnet34
         from torchvision.models import resnet50
 
-        self.base_model = {"resnet18": resnet18, "resnet50": resnet50}[encoder]
+        self.base_model = {"resnet18": resnet18, "resnet50": resnet50, "resnet34": resnet34}[encoder]
 
         # initialize encoder
         self.encoder = self.base_model(zero_init_residual=zero_init_residual)
@@ -187,7 +188,7 @@ class BaseModel(pl.LightningModule):
         parser = parent_parser.add_argument_group("base")
 
         # encoder args
-        SUPPORTED_NETWORKS = ["resnet18", "resnet50"]
+        SUPPORTED_NETWORKS = ["resnet18", "resnet50", "resnet34"]
 
         parser.add_argument("--encoder", choices=SUPPORTED_NETWORKS, type=str)
         parser.add_argument("--zero_init_residual", action="store_true")

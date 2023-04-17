@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from typing import Any
+from typing import Any, Union
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -62,8 +62,11 @@ class LinearModel(pl.LightningModule):
         super().__init__()
 
         self.backbone = backbone
+        if inplanes is None:
+            print("It's none")
+            inplanes = self.backbone.inplanes
         self.classifier = nn.Sequential(
-            nn.Linear(inplanes or self.backbone.inplanes, semi_proj_hidden_dim),
+            nn.Linear(inplanes, semi_proj_hidden_dim),
             nn.BatchNorm1d(semi_proj_hidden_dim),
             nn.ReLU(),
             nn.Linear(semi_proj_hidden_dim, num_classes), # type: ignore
@@ -102,7 +105,7 @@ class LinearModel(pl.LightningModule):
         parser = parent_parser.add_argument_group("linear")
 
         # encoder args
-        SUPPORTED_NETWORKS = ["resnet18", "resnet50"]
+        SUPPORTED_NETWORKS = ["resnet18", "resnet34", "resnet50"]
 
         parser.add_argument("--encoder", choices=SUPPORTED_NETWORKS, type=str)
         parser.add_argument("--zero_init_residual", action="store_true")
@@ -219,7 +222,7 @@ class LinearModel(pl.LightningModule):
             return [optimizer], [scheduler]
 
     def shared_step(
-        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
+        self, batch: Tuple[Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]], torch.Tensor], batch_idx: int
     ) -> Tuple[int, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Performs operations that are shared between the training nd validation steps.
 
@@ -233,7 +236,10 @@ class LinearModel(pl.LightningModule):
         """
 
         X, target = batch
-        batch_size = X.size(0)
+        if isinstance(X, torch.Tensor):
+            batch_size = X.size(0)
+        else:
+            batch_size = X[0].size(0)
 
         logits = self(X)["logits"]
 
@@ -275,7 +281,7 @@ class LinearModel(pl.LightningModule):
                 the classification loss and accuracies.
         """
 
-        batch_size, loss, acc1, acc3, logits = self.shared_step(batch[-2:], batch_idx)
+        batch_size, loss, acc1, acc3, logits = self.shared_step(batch, batch_idx)
 
         results = {
             "batch_size": batch_size,
@@ -308,7 +314,8 @@ class LinearModel(pl.LightningModule):
 
 class LinearRecognitionModel(LinearModel):
     def __init__(self, cat_strategy: str, **kwargs):
-        super().__init__(inplanes=kwargs["backbone"].inplanes*2, **kwargs)
+        mult = 2 if cat_strategy == "cat" else 1
+        super().__init__(inplanes=kwargs["backbone"].inplanes*mult, **kwargs)
         self.cat_strategy = cat_strategy
 
     @staticmethod
